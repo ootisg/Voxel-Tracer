@@ -54,6 +54,10 @@ public class Camera extends GameObject {
 	
 	private boolean hqmode;
 	
+	private boolean lookMode = false;
+	private double lastMouseX;
+	private double lastMouseY;
+	
 	private LinkedList<LightSource> lights;
 	
 	public Camera (Map map, double x, double y, double z, double fov, double clipNear, double clipFar, int horizontalResolution, int verticalResolution) {
@@ -99,12 +103,7 @@ public class Camera extends GameObject {
 		rayPlane = new Vector3[horizPixels * vertPixels];
 		
 		//Calculate corner points (TODO)
-		double usedFov = (fov / 180) * Math.PI / 2;
-		double angleLeft = hAng - usedFov;
-		double angleRight = hAng + usedFov;
-		double angleUp = vAng - usedFov;
-		double angleDown = vAng + usedFov;
-		double magnitude = clipNear / Math.cos (usedFov);
+		double usedFov = (fov / 180) * Math.PI / 2; //TODO fov currently does nothing
 		Matrix4 rot = getRotation ();
 		Vector3 topLeft = Matrix4.product (rot, new Vector3 (-1, -1, 1));
 		Vector3 topRight = Matrix4.product (rot, new Vector3 (1, -1, 1));
@@ -217,6 +216,23 @@ public class Camera extends GameObject {
 			y -= direction.y * walkSpeed;
 			z -= direction.z * walkSpeed;
 		}
+		if (mouseButtonDown (0)) {
+			if (!lookMode) {
+				lookMode = true;
+			} else {
+				double diffX = getCursorX () - lastMouseX;
+				double diffY = getCursorY () - lastMouseY;
+				System.out.println (getCursorX () + ", " + getCursorY ());
+				hAng -= diffX * 2;
+				vAng += diffY * 2;
+			}
+			lastMouseX = getCursorX ();
+			lastMouseY = getCursorY ();
+		}
+		if (mouseButtonReleased (0)) {
+			lookMode = false;
+		}
+		
 		//Bound the yaw angle to +-80 degrees
 		if (vAng > 80 * Math.PI / 180) {
 			vAng = 80 * Math.PI / 180;
@@ -224,6 +240,7 @@ public class Camera extends GameObject {
 		if (vAng < -80 * Math.PI / 180) {
 			vAng = -80 * Math.PI / 180;
 		}
+
 		if (keyPressed ('Q')) {
 			if (!hqmode) {
 				setResolution (640, 480);

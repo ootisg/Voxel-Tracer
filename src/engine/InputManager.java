@@ -196,10 +196,9 @@ public class InputManager {
 			int index = getButtonIndex (e.getButton ());
 			if (index != -1) {
 				clicks [index] = true;
-				buttonsDown [index] = true;
+				//buttonsDown [index] = true;
 			}
 			updateMouseCoords (e);
-			System.out.println (cursorX + ", " + cursorY);
 		}
 
 		@Override
@@ -217,6 +216,10 @@ public class InputManager {
 		@Override
 		public void mousePressed (MouseEvent e) {
 			mouseEvents.add (e);
+			int index = getButtonIndex (e.getButton ());
+			if (index != -1) {
+				buttonsDown [index] = true;
+			}
 			updateMouseCoords (e);
 		}
 
