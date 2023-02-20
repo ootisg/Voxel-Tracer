@@ -9,6 +9,7 @@ import java.awt.image.WritableRaster;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Vector;
 
 import engine.GameObject;
 import engine.RenderLoop;
@@ -40,7 +41,7 @@ public class Camera extends GameObject {
 	
 	private int maxSteps = 50;
 	
-	Point3d[] rayPlane;
+	Vector3[] rayPlane;
 	int[] renderData;
 	
 	int usedId = 1;
@@ -68,7 +69,7 @@ public class Camera extends GameObject {
 		hAng = 0;
 		vAng = 0;
 		lights = new LinkedList<LightSource> ();
-		lights.add (new LightSource (new Point3d (25, 10, 50), 10));
+		lights.add (new LightSource (new Vector3 (25, 10, 50), 10));
 	}
 	
 	public void setPosition (double x, double y, double z) {
@@ -95,7 +96,7 @@ public class Camera extends GameObject {
 		double d = .5;
 		
 		//Create the ray plane
-		rayPlane = new Point3d[horizPixels * vertPixels];
+		rayPlane = new Vector3[horizPixels * vertPixels];
 		
 		//Calculate corner points (TODO)
 		double usedFov = (fov / 180) * Math.PI / 2;
@@ -104,11 +105,11 @@ public class Camera extends GameObject {
 		double angleUp = vAng - usedFov;
 		double angleDown = vAng + usedFov;
 		double magnitude = clipNear / Math.cos (usedFov);
-		Point3d thisPos = new Point3d (x, y, z);
-		Point3d topLeft = generatePoint (thisPos, angleLeft, angleUp, magnitude);
-		Point3d topRight = generatePoint (thisPos, angleRight, angleUp, magnitude);
-		Point3d bottomLeft = generatePoint (thisPos, angleLeft, angleDown, magnitude);
-		Point3d bottomRight = generatePoint (thisPos, angleRight, angleDown, magnitude);
+		Matrix4 rot = getRotation ();
+		Vector3 topLeft = Matrix4.product (rot, new Vector3 (-1, -1, 1));
+		Vector3 topRight = Matrix4.product (rot, new Vector3 (1, -1, 1));
+		Vector3 bottomLeft = Matrix4.product (rot, new Vector3 (-1, 1, 1));
+		Vector3 bottomRight = Matrix4.product (rot, new Vector3 (1, 1, 1));
 		//Calculate remaining points
 		double vXOffset = (bottomRight.x - topRight.x) / vertPixels;
 		double vYOffset = (bottomRight.y - topRight.y) / vertPixels;
@@ -118,17 +119,23 @@ public class Camera extends GameObject {
 		double hZOffset;
 		//Theoretically generates a nice little plane
 		for (int wy = 0; wy < vertPixels; wy ++) {
-			Point3d vEdgeLeft = new Point3d (topLeft.x + vXOffset * wy, topLeft.y + vYOffset * wy, topLeft.z + vZOffset * wy);
-			Point3d vEdgeRight = new Point3d (topRight.x + vXOffset * wy, topRight.y + vYOffset * wy, topRight.z + vZOffset * wy);
+			Vector3 vEdgeLeft = new Vector3 (topLeft.x + vXOffset * wy, topLeft.y + vYOffset * wy, topLeft.z + vZOffset * wy);
+			Vector3 vEdgeRight = new Vector3 (topRight.x + vXOffset * wy, topRight.y + vYOffset * wy, topRight.z + vZOffset * wy);
 			hXOffset = (vEdgeRight.x - vEdgeLeft.x) / horizPixels;
 			hYOffset = (vEdgeRight.y - vEdgeLeft.y) / horizPixels;
 			hZOffset = (vEdgeRight.z - vEdgeLeft.z) / horizPixels;
 			for (int wx = 0; wx < horizPixels; wx ++) {
-				rayPlane [horizPixels * wy + wx] = new Point3d (vEdgeLeft.x + hXOffset * wx, vEdgeLeft.y + hYOffset * wx, vEdgeLeft.z + hZOffset * wx);
+				rayPlane [horizPixels * wy + wx] = new Vector3 (vEdgeLeft.x + hXOffset * wx + x, vEdgeLeft.y + hYOffset * wx + y, vEdgeLeft.z + hZOffset * wx + z);
 				//uu += rayPlane[horizPixels * wy + wx].toString ();
 			}
 			//System.out.println (uu);
 		}
+	}
+	
+	public Matrix4 getRotation () {
+		Matrix4 yaw = Matrix4.rotY (hAng);
+		Matrix4 pitch = Matrix4.rotX (vAng);
+		return Matrix4.product (yaw, pitch);
 	}
 	
 	@Override
@@ -138,8 +145,8 @@ public class Camera extends GameObject {
 		int reachDist = 10;
 		
 		//Do look at stuff n stuff
-		Point3d cursorPoint = generatePoint (new Point3d (x, y, z), hAng, vAng, 1);
-		Ray ray = new Ray (x, y, z, cursorPoint.x, cursorPoint.y, cursorPoint.z, reachDist);
+		Vector3 direction = Matrix4.product (getRotation (), new Vector3 (0, 0, 1));
+		Ray ray = new Ray (x, y, z, direction.x + x, direction.y + y, direction.z + z, reachDist);
 		Voxel target = null;
 		while (!ray.hitVoxel ()) {
 			target = ray.step (map);
@@ -154,32 +161,8 @@ public class Camera extends GameObject {
 			}
 			targetedVoxel = hitVoxel;
 		}*/
-		
-		if (keyDown ('A')) {
-			hAng -= (Math.PI / 180) * turnSpeed;
-		}
-		if (keyDown ('D')) {
-			hAng += (Math.PI / 180) * turnSpeed;
-		}
-		if (keyDown ('F')) {
-			vAng += (Math.PI / 180) * turnSpeed;
-		}
-		if (keyDown ('G')) {
-			vAng -= (Math.PI / 180) * turnSpeed;
-		}
-		if (keyDown ('W')) {
-			x += Math.cos (hAng) * walkSpeed * Math.cos (vAng);
-			y += Math.sin (vAng) * walkSpeed;
-			z += Math.sin (hAng) * walkSpeed * Math.cos (vAng);
-		}
-		if (keyDown ('S')) {
-			x -= Math.cos (hAng) * walkSpeed * Math.cos (vAng);
-			y -= Math.sin (vAng) * walkSpeed;
-			z -= Math.sin (hAng) * walkSpeed * Math.cos (vAng);
-		}
 		if (keyPressed ('C')) {
-			cursorPoint = generatePoint (new Point3d (x, y, z), hAng, vAng, 1);
-			ray = new Ray (x, y, z, cursorPoint.x, cursorPoint.y, cursorPoint.z, reachDist);
+			ray = new Ray (x, y, z, direction.x + x, direction.y + y, direction.z + z, reachDist);
 			Voxel toDestroy = null;
 			Voxel temp = null;
 			while (!ray.hitVoxel ()) {
@@ -190,8 +173,7 @@ public class Camera extends GameObject {
 			}
 		}
 		if (keyPressed (' ')) {
-			cursorPoint = generatePoint (new Point3d (x, y, z), hAng, vAng, 1);
-			ray = new Ray (x, y, z, cursorPoint.x, cursorPoint.y, cursorPoint.z, reachDist);
+			ray = new Ray (x, y, z, direction.x + x, direction.y + y, direction.z + z, reachDist);
 			Voxel toPlace = null;
 			Voxel temp = null;
 			while (!ray.hitVoxel ()) {
@@ -205,13 +187,42 @@ public class Camera extends GameObject {
 				}
 				TexturedVoxel newVoxel = new TexturedVoxel (toPlace.getX (), toPlace.getY (), toPlace.getZ (), workingId);
 				if ((workingId & 0xFF) == 5) {
-					lights.add (new LightSource (new Point3d (toPlace.getX () + .5, toPlace.getY () + .5, toPlace.getZ () + .5), 4));
+					lights.add (new LightSource (new Vector3 (toPlace.getX () + .5, toPlace.getY () + .5, toPlace.getZ () + .5), 4));
 				}
 				map.putVoxel (newVoxel);
 				if (usedId == 6) {
 					new WaterEntity (newVoxel, map, 0).declare ();
 				}
 			}
+		}
+		if (keyDown ('A')) {
+			hAng -= (Math.PI / 180) * turnSpeed;
+		}
+		if (keyDown ('D')) {
+			hAng += (Math.PI / 180) * turnSpeed;
+		}
+		if (keyDown ('F')) {
+			vAng += (Math.PI / 180) * turnSpeed;
+		}
+		if (keyDown ('G')) {
+			vAng -= (Math.PI / 180) * turnSpeed;
+		}
+		if (keyDown ('W')) {
+			x += direction.x * walkSpeed;
+			y += direction.y * walkSpeed;
+			z += direction.z * walkSpeed;
+		}
+		if (keyDown ('S')) {
+			x -= direction.x * walkSpeed;
+			y -= direction.y * walkSpeed;
+			z -= direction.z * walkSpeed;
+		}
+		//Bound the yaw angle to +-80 degrees
+		if (vAng > 80 * Math.PI / 180) {
+			vAng = 80 * Math.PI / 180;
+		}
+		if (vAng < -80 * Math.PI / 180) {
+			vAng = -80 * Math.PI / 180;
 		}
 		if (keyPressed ('Q')) {
 			if (!hqmode) {
@@ -255,10 +266,10 @@ public class Camera extends GameObject {
 		//throw new NullPointerException ();
 	}
 	
-	public Point3d generatePoint (Point3d start, double hAng, double vAng, double magnitude) {
+	public Vector3 generatePoint (Vector3 start, double hAng, double vAng, double magnitude) {
 		double xOff = Math.cos (hAng) * Math.cos (vAng) * magnitude;
 		double yOff = Math.sin (vAng) * magnitude;
 		double zOff = Math.sin (hAng) * Math.cos (vAng) * magnitude;
-		return new Point3d (start.x + xOff, start.y + yOff, start.z + zOff);
+		return new Vector3 (start.x + xOff, start.y + yOff, start.z + zOff);
 	}
 }

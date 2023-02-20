@@ -635,14 +635,14 @@ public class Ray {
 		hasFilter = true;
 	}
 	
-	public void setStepPoint (Point3d point) {
+	public void setStepPoint (Vector3 point) {
 		xStep = point.x;
 		yStep = point.y;
 		zStep = point.z;
 	}
 	
-	public Point3d getStepPoint () {
-		return new Point3d (xStep, yStep, zStep);
+	public Vector3 getStepPoint () {
+		return new Vector3 (xStep, yStep, zStep);
 	}
 	
 	public void useLights (LinkedList<LightSource> lights) {

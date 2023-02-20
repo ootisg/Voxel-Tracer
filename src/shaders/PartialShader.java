@@ -1,7 +1,7 @@
 package shaders;
 
 import filters.Tint;
-import render.Point3d;
+import render.Vector3;
 import render.Ray;
 import voxels.Voxel;
 import voxels.VoxelSide;
@@ -24,7 +24,7 @@ public class PartialShader extends TextureShader {
 				newX -= voxel.getX ();
 				newZ -= voxel.getZ ();
 				if (newX >= 0 && newX <= 1 && newZ >= 0 && newZ <= 1) {
-					ray.setStepPoint (new Point3d (newX, planeY, newZ));
+					ray.setStepPoint (new Vector3 (newX, planeY, newZ));
 					return super.shade (ray, voxel, VoxelSide.SIDE_TOP, newX, newZ);
 				} else {
 					ray.continuePhysics ();

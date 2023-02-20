@@ -8,7 +8,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 import filters.Tint;
-import render.Point3d;
+import render.Vector3;
 import render.Ray;
 import voxels.Voxel;
 import voxels.VoxelSide;
